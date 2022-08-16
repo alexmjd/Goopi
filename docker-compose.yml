@@ -13,6 +13,8 @@ services:
       
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: godb
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
 
   api:
     image: goo_v1
@@ -21,3 +23,8 @@ services:
     container_name: gopi
     volumes:
       - .:/opt/app/api
+    environment:
+      DBUSER: user
+      DBPASS: pass
+    depends_on:
+      - "db"
