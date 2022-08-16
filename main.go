@@ -14,6 +14,7 @@ var db *sql.DB
 
 func main() {
 
+	// Use of mysql.NewConfig() to take all default parameters such as mysql_native_password
 	config := mysql.NewConfig()
 
 	config.User = os.Getenv("DBUSER")
@@ -22,6 +23,7 @@ func main() {
 	config.Addr = "godb:3306"
 	config.DBName = "godb"
 
+	// Loop the DB ping until it works.
 	loop := true
 	for loop {
 
@@ -35,7 +37,6 @@ func main() {
 
 		pingErr := db.Ping()
 		if pingErr != nil {
-			// log.Fatal("Ping Error: ", pingErr)
 			log.Println("Ping Error: ", pingErr)
 		}
 
