@@ -14,10 +14,10 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: godb
 
-  # api:
-  #   image: goo_v1
-  #   build:
-  #     dockerfile: ./dockers/Gockerfile
-  #   container_name: gopi
-  #   volumes:
-  #     - .:/opt/app/api
+  api:
+    image: goo_v1
+    build:
+      dockerfile: ./dockers/Gockerfile
+    container_name: gopi
+    volumes:
+      - .:/opt/app/api
