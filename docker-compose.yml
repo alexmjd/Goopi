@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:5.7
+    container_name: godb
+    ports:
+      - "33066:3306"
+    volumes:
+      - "./database:/docker-entrypoint-initdb.d"
+    restart: always
+    environment:
+      
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: godb
+
+  # api:
+  #   image: goo_v1
+  #   build:
+  #     dockerfile: ./dockers/Gockerfile
+  #   container_name: gopi
+  #   volumes:
+  #     - .:/opt/app/api
