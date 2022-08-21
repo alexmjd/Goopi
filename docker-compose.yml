@@ -26,5 +26,8 @@ services:
     environment:
       DBUSER: user
       DBPASS: pass
+      DBNAME: godb
     depends_on:
       - "db"
+    ports:
+      - "9999:9999"
