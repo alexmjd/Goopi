@@ -2,12 +2,13 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"godb/src/models"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
-
-	"godb/src/models"
 
 	"github.com/gorilla/mux"
 
@@ -18,8 +19,6 @@ type App struct {
 	Router *mux.Router
 	DB     *sql.DB
 }
-
-type Product models.Product
 
 // Init the DB Connection
 func (a *App) Init(user, pass, dbname string) {
@@ -33,9 +32,10 @@ func (a *App) Init(user, pass, dbname string) {
 
 	// Loop the DB ping until it works.
 	loop := true
+	var err error
 	for loop {
 
-		db, err := sql.Open("mysql", config.FormatDSN())
+		a.DB, err = sql.Open("mysql", config.FormatDSN())
 
 		if err != nil {
 			log.Fatal("Error while connecting to DB")
@@ -43,7 +43,7 @@ func (a *App) Init(user, pass, dbname string) {
 
 		log.Print("SQL Connection openned...")
 
-		pingErr := db.Ping()
+		pingErr := a.DB.Ping()
 		if pingErr != nil {
 			log.Println("Ping Error: ", pingErr)
 		}
@@ -81,6 +81,32 @@ func Hello(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) ReadProductById(w http.ResponseWriter, r *http.Request) {
 	log.Println("Read one product.")
+
+	// Get all variables from requests
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+
+	if err != nil {
+		fmt.Fprintf(w, "Cannot convert string to int.\n")
+		return
+	}
+
+	p := models.Product{Id: id}
+
+	data, err := json.Marshal(p)
+	log.Printf("Product -> %s", data)
+
+	//return
+	if err := p.GetProduct(a.DB); err != nil {
+		fmt.Printf("Error here %s\n", err)
+		fmt.Fprintf(w, "An error occured when getting the %d product.\n", id)
+	}
+
+	responseJson, err := json.Marshal(p)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	w.Write(responseJson)
 }
 
 func (a *App) ReadAllProduct(w http.ResponseWriter, r *http.Request) {
