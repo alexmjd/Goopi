@@ -1,11 +1,8 @@
 package main
 
 import (
-	"database/sql"
 	"os"
 )
-
-var db *sql.DB
 
 func main() {
 
