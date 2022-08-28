@@ -160,4 +160,24 @@ func (a *App) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	log.Println("Delete a product.")
+
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+
+	if err != nil {
+		fmt.Fprint(w, "Invalid Product Id.\n")
+		return
+	}
+
+	p := models.Product{Id: id}
+
+	err = p.DeleteProduct(a.DB)
+	if err != nil {
+		fmt.Fprintf(w, "Error while deleting product %d.\n", p.Id)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "Successfully delete product %d.\n", p.Id)
 }
