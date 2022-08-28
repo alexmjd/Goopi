@@ -2,7 +2,6 @@ package models
 
 import (
 	"database/sql"
-	"errors"
 )
 
 type Product struct {
@@ -39,7 +38,9 @@ func (p *Product) CreateProduct(db *sql.DB) error {
 }
 
 func (p *Product) UpdateProduct(db *sql.DB) error {
-	return errors.New("Not Implemented yet.")
+	_, err := db.Exec("UPDATE products SET name=?, price=? WHERE id=?", p.Name, p.Price, p.Id)
+
+	return err
 }
 
 func (p *Product) DeleteProduct(db *sql.DB) error {
