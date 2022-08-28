@@ -15,3 +15,6 @@ Once docker is installed, make sure you ran [those steps](https://docs.docker.co
 
 When docker is successfully installed, you can now run the following command to start the basic Golang API.
 - `docker compose up`
+
+### Usefull
+Do not hesitate to install `JQ` 
