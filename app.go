@@ -4,20 +4,22 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"godb/src/models"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 
-	"github.com/go-sql-driver/mysql"
+	"godb/src/models"
 )
 
 type App struct {
 	Router *mux.Router
 	DB     *sql.DB
+
+	Product models.Product
 }
 
 // Init the DB Connection
@@ -31,9 +33,8 @@ func (a *App) Init(user, pass, dbname string) {
 	config.DBName = dbname
 
 	// Loop the DB ping until it works.
-	loop := true
 	var err error
-	for loop {
+	for {
 
 		a.DB, err = sql.Open("mysql", config.FormatDSN())
 
@@ -49,7 +50,7 @@ func (a *App) Init(user, pass, dbname string) {
 		}
 
 		if err == nil && pingErr == nil {
-			loop = false
+			break
 		}
 
 		time.Sleep(time.Second * 3)
@@ -87,26 +88,28 @@ func (a *App) ReadProductById(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(vars["id"])
 
 	if err != nil {
-		fmt.Fprintf(w, "Cannot convert string to int.\n")
+		fmt.Fprintf(w, "Converting string to int.\n")
 		return
 	}
 
 	p := models.Product{Id: id}
 
 	err = p.GetProduct(a.DB)
-	switch {
-	case err == sql.ErrNoRows:
+	switch err {
+	case nil:
+		// Nominal case
+	case sql.ErrNoRows:
 		fmt.Fprintf(w, "No product with id %d.\n", id)
 		return
-	case err != nil:
+	default:
 		fmt.Printf("Error here %s\n", err)
-		fmt.Fprintf(w, "An error occured when getting the %d product.\n", id)
+		fmt.Fprintf(w, "Getting the %d product.\n", id)
 		return
 	}
 
 	responseJson, err := json.Marshal(p)
 	if err != nil {
-		fmt.Fprintf(w, "An error occured: %s.\n", err)
+		fmt.Fprintf(w, "Marshaling JSON: %s.\n", err)
 		return
 	}
 
@@ -120,18 +123,20 @@ func (a *App) ReadAllProduct(w http.ResponseWriter, r *http.Request) {
 
 	productList, err := models.GetAllProduct(a.DB)
 
-	switch {
-	case err == sql.ErrNoRows:
+	switch err {
+	case nil:
+		// Nominal case
+	case sql.ErrNoRows:
 		fmt.Fprintf(w, "%s.\n", err)
 		return
-	case err != nil:
+	default:
 		fmt.Fprintf(w, "Error on requesting DB.\n")
 		return
 	}
 
 	responseJson, err := json.Marshal(productList)
 	if err != nil {
-		fmt.Fprintf(w, "An error occured: %s.\n", err)
+		fmt.Fprintf(w, "Marshaling JSON: %s.\n", err)
 		return
 	}
 
@@ -143,7 +148,7 @@ func (a *App) ReadAllProduct(w http.ResponseWriter, r *http.Request) {
 func (a *App) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	log.Println("Create a product.")
 
-	var p models.Product
+	p := a.Product
 
 	// Read the request's body content
 	decodedContent := json.NewDecoder(r.Body)
@@ -167,7 +172,7 @@ func (a *App) CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 	responseJson, err := json.Marshal(p)
 	if err != nil {
-		fmt.Fprintf(w, "An error occured: %s.\n", err)
+		fmt.Fprintf(w, "Marshaling JSON: %s.\n", err)
 		return
 	}
 
@@ -206,7 +211,7 @@ func (a *App) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 	responseJson, err := json.Marshal(p)
 	if err != nil {
-		fmt.Fprintf(w, "An error occured: %s.\n", err)
+		fmt.Fprintf(w, "Marshaling JSON: %s.\n", err)
 		return
 	}
 
