@@ -93,20 +93,25 @@ func (a *App) ReadProductById(w http.ResponseWriter, r *http.Request) {
 
 	p := models.Product{Id: id}
 
-	data, err := json.Marshal(p)
-	log.Printf("Product -> %s", data)
-
-	//return
-	if err := p.GetProduct(a.DB); err != nil {
+	err = p.GetProduct(a.DB)
+	switch {
+	case err == sql.ErrNoRows:
+		fmt.Fprintf(w, "No product with id %d.\n", id)
+		return
+	case err != nil:
 		fmt.Printf("Error here %s\n", err)
 		fmt.Fprintf(w, "An error occured when getting the %d product.\n", id)
 	}
 
 	responseJson, err := json.Marshal(p)
+	if err != nil {
+		fmt.Fprintf(w, "An error occured: %s.\n", err)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	w.Write(responseJson)
+	fmt.Fprintf(w, "%s\n", responseJson)
 }
 
 func (a *App) ReadAllProduct(w http.ResponseWriter, r *http.Request) {
