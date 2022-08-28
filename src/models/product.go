@@ -20,7 +20,16 @@ func (p *Product) GetAllProduct(db *sql.DB) error {
 }
 
 func (p *Product) CreateProduct(db *sql.DB) error {
-	err := db.QueryRow("INSERT INTO products(name, price) VALUES($1, $2) RETURNING ID", p.Name, p.Price).Scan(&p.Id)
+	err := db.QueryRow("INSERT INTO products(name, price) VALUES(?, ?);", p.Name, p.Price).Scan(&p.Id)
+
+	if err == sql.ErrNoRows {
+		err = db.QueryRow("SELECT LAST_INSERT_ID();").Scan(&p.Id)
+
+		if err != nil {
+			return err
+		}
+		return nil
+	}
 
 	if err != nil {
 		return err
