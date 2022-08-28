@@ -14,8 +14,29 @@ func (p *Product) GetProduct(db *sql.DB) error {
 	return db.QueryRow("SELECT name, price FROM products WHERE id=?;", p.Id).Scan(&p.Name, &p.Price)
 }
 
-func (p *Product) GetAllProduct(db *sql.DB) error {
-	return db.QueryRow("SELECT * FROM products;").Scan(&p)
+func GetAllProduct(db *sql.DB) ([]Product, error) {
+	rows, err := db.Query("SELECT * FROM products;")
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	products := []Product{}
+
+	for rows.Next() {
+		var p Product
+		err = rows.Scan(&p.Id, &p.Name, &p.Price)
+		if err != nil {
+			return nil, err
+		}
+
+		products = append(products, p)
+	}
+
+	return products, nil
+
 }
 
 func (p *Product) CreateProduct(db *sql.DB) error {
