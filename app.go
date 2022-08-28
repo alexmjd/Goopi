@@ -156,6 +156,42 @@ func (a *App) CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	log.Println("Update a product.")
+
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+
+	if err != nil {
+		fmt.Fprintf(w, "Invalid request: %s.\n", err)
+		return
+	}
+
+	p := models.Product{Id: id}
+
+	decodedContent := json.NewDecoder(r.Body)
+	err = decodedContent.Decode(&p)
+	if err != nil {
+		fmt.Fprintf(w, "Error on payload: %s.\n", err)
+		return
+	}
+
+	defer r.Body.Close()
+
+	err = p.UpdateProduct(a.DB)
+	if err != nil {
+		fmt.Fprintf(w, "Error on updating product %d: %s.\n", p.Id, err)
+		return
+	}
+
+	responseJson, err := json.Marshal(p)
+	if err != nil {
+		fmt.Fprintf(w, "An error occured: %s.\n", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "%s\n", responseJson)
+
 }
 
 func (a *App) DeleteProduct(w http.ResponseWriter, r *http.Request) {
