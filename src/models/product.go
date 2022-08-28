@@ -43,5 +43,7 @@ func (p *Product) UpdateProduct(db *sql.DB) error {
 }
 
 func (p *Product) DeleteProduct(db *sql.DB) error {
-	return errors.New("Not Implemented yet.")
+	_, err := db.Exec("DELETE FROM products WHERE id=?", p.Id)
+
+	return err
 }
