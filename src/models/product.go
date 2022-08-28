@@ -15,15 +15,15 @@ func (p *Product) GetProduct(db *sql.DB) error {
 }
 
 func GetAllProduct(db *sql.DB) ([]Product, error) {
-	rows, err := db.Query("SELECT * FROM products;")
+	products := []Product{}
+
+	rows, err := db.Query("SELECT id, name, price FROM products;")
 
 	if err != nil {
-		return nil, err
+		return products, err
 	}
 
 	defer rows.Close()
-
-	products := []Product{}
 
 	for rows.Next() {
 		var p Product
@@ -36,20 +36,16 @@ func GetAllProduct(db *sql.DB) ([]Product, error) {
 	}
 
 	return products, nil
-
 }
 
 func (p *Product) CreateProduct(db *sql.DB) error {
-	err := db.QueryRow("INSERT INTO products(name, price) VALUES(?, ?);", p.Name, p.Price).Scan(&p.Id)
-
-	if err == sql.ErrNoRows {
-		err = db.QueryRow("SELECT LAST_INSERT_ID();").Scan(&p.Id)
-
-		if err != nil {
-			return err
-		}
-		return nil
+	result, err := db.Exec("INSERT INTO products(name, price) VALUES(?, ?);", p.Name, p.Price)
+	if err != nil {
+		return err
 	}
+
+	productID, err := result.LastInsertId()
+	p.Id = int(productID)
 
 	if err != nil {
 		return err
@@ -59,13 +55,13 @@ func (p *Product) CreateProduct(db *sql.DB) error {
 }
 
 func (p *Product) UpdateProduct(db *sql.DB) error {
-	_, err := db.Exec("UPDATE products SET name=?, price=? WHERE id=?", p.Name, p.Price, p.Id)
+	_, err := db.Exec("UPDATE products SET name=?, price=? WHERE id=?;", p.Name, p.Price, p.Id)
 
 	return err
 }
 
 func (p *Product) DeleteProduct(db *sql.DB) error {
-	_, err := db.Exec("DELETE FROM products WHERE id=?", p.Id)
+	_, err := db.Exec("DELETE FROM products WHERE id=?;", p.Id)
 
 	return err
 }
