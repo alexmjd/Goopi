@@ -76,7 +76,7 @@ func (a *App) Run(addr string) {
 }
 
 func Hello(w http.ResponseWriter, r *http.Request) {
-	log.Println("Hello API.")
+	fmt.Fprintf(w, "Hello API.\n")
 }
 
 func (a *App) ReadProductById(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +110,7 @@ func (a *App) ReadProductById(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "%s\n", responseJson)
 }
 
@@ -120,6 +120,38 @@ func (a *App) ReadAllProduct(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	log.Println("Create a product.")
+
+	var p models.Product
+
+	// Read the request's body content
+	decodedContent := json.NewDecoder(r.Body)
+
+	// Translate the decodedContent to a product
+	err := decodedContent.Decode(&p)
+	if err != nil {
+		log.Printf("No readable content %s.\n", err)
+		fmt.Fprintf(w, "Invalid request payload.\n")
+		return
+	}
+
+	// Close the Request body at the end of the scope
+	defer r.Body.Close()
+
+	err = p.CreateProduct(a.DB)
+	if err != nil {
+		fmt.Fprintf(w, "Error while creating the product: %s.\n", err)
+		return
+	}
+
+	responseJson, err := json.Marshal(p)
+	if err != nil {
+		fmt.Fprintf(w, "An error occured: %s.\n", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	fmt.Fprintf(w, "%s\n", responseJson)
 }
 
 func (a *App) UpdateProduct(w http.ResponseWriter, r *http.Request) {
