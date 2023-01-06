@@ -16,5 +16,13 @@ func (p *Product) GetProduct(db *sql.DB) error {
 }
 
 func (p *Product) CreateProduct(db *sql.DB) error {
-	return errors.New("Not Implemented")
+	return errors.New("Not Implemented yet")
+}
+
+func (p *Product) UpdateProduct(db *sql.DB) error {
+	return errors.New("Not Implemented yet")
+}
+
+func (p *Product) DeleteProduct(db *sql.DB) error {
+	return errors.New("Not Implemented yet")
 }
