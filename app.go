@@ -4,20 +4,22 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"godb/src/models"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 
-	"github.com/go-sql-driver/mysql"
+	"godb/src/models"
 )
 
 type App struct {
 	Router *mux.Router
 	DB     *sql.DB
+
+	Product models.Product
 }
 
 // Init the DB Connection
@@ -31,9 +33,8 @@ func (a *App) Init(user, pass, dbname string) {
 	config.DBName = dbname
 
 	// Loop the DB ping until it works.
-	loop := true
 	var err error
-	for loop {
+	for {
 
 		a.DB, err = sql.Open("mysql", config.FormatDSN())
 
@@ -49,7 +50,7 @@ func (a *App) Init(user, pass, dbname string) {
 		}
 
 		if err == nil && pingErr == nil {
-			loop = false
+			break
 		}
 
 		time.Sleep(time.Second * 3)
@@ -76,7 +77,7 @@ func (a *App) Run(addr string) {
 }
 
 func Hello(w http.ResponseWriter, r *http.Request) {
-	log.Println("Hello API.")
+	fmt.Fprintf(w, "Hello API.\n")
 }
 
 func (a *App) ReadProductById(w http.ResponseWriter, r *http.Request) {
@@ -87,40 +88,159 @@ func (a *App) ReadProductById(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(vars["id"])
 
 	if err != nil {
-		fmt.Fprintf(w, "Cannot convert string to int.\n")
+		fmt.Fprintf(w, "Converting string to int.\n")
 		return
 	}
 
 	p := models.Product{Id: id}
 
-	data, err := json.Marshal(p)
-	log.Printf("Product -> %s", data)
-
-	//return
-	if err := p.GetProduct(a.DB); err != nil {
+	err = p.GetProduct(a.DB)
+	switch err {
+	case nil:
+		// Nominal case
+	case sql.ErrNoRows:
+		fmt.Fprintf(w, "No product with id %d.\n", id)
+		return
+	default:
 		fmt.Printf("Error here %s\n", err)
-		fmt.Fprintf(w, "An error occured when getting the %d product.\n", id)
+		fmt.Fprintf(w, "Getting the %d product.\n", id)
+		return
 	}
 
 	responseJson, err := json.Marshal(p)
+	if err != nil {
+		fmt.Fprintf(w, "Marshaling JSON: %s.\n", err)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	w.Write(responseJson)
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "%s\n", responseJson)
 }
 
 func (a *App) ReadAllProduct(w http.ResponseWriter, r *http.Request) {
 	log.Println("Read All product.")
+
+	productList, err := models.GetAllProduct(a.DB)
+
+	switch err {
+	case nil:
+		// Nominal case
+	case sql.ErrNoRows:
+		fmt.Fprintf(w, "%s.\n", err)
+		return
+	default:
+		fmt.Fprintf(w, "Error on requesting DB.\n")
+		return
+	}
+
+	responseJson, err := json.Marshal(productList)
+	if err != nil {
+		fmt.Fprintf(w, "Marshaling JSON: %s.\n", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "%s\n", responseJson)
 }
 
 func (a *App) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	log.Println("Create a product.")
+
+	p := a.Product
+
+	// Read the request's body content
+	decodedContent := json.NewDecoder(r.Body)
+
+	// Translate the decodedContent to a product
+	err := decodedContent.Decode(&p)
+	if err != nil {
+		log.Printf("No readable content %s.\n", err)
+		fmt.Fprintf(w, "Invalid request payload.\n")
+		return
+	}
+
+	// Close the Request body at the end of the scope
+	defer r.Body.Close()
+
+	err = p.CreateProduct(a.DB)
+	if err != nil {
+		fmt.Fprintf(w, "Error while creating the product: %s.\n", err)
+		return
+	}
+
+	responseJson, err := json.Marshal(p)
+	if err != nil {
+		fmt.Fprintf(w, "Marshaling JSON: %s.\n", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	fmt.Fprintf(w, "%s\n", responseJson)
 }
 
 func (a *App) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	log.Println("Update a product.")
+
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+
+	if err != nil {
+		fmt.Fprintf(w, "Invalid request: %s.\n", err)
+		return
+	}
+
+	p := models.Product{Id: id}
+
+	decodedContent := json.NewDecoder(r.Body)
+	err = decodedContent.Decode(&p)
+	if err != nil {
+		fmt.Fprintf(w, "Error on payload: %s.\n", err)
+		return
+	}
+
+	defer r.Body.Close()
+
+	err = p.UpdateProduct(a.DB)
+	if err != nil {
+		fmt.Fprintf(w, "Error on updating product %d: %s.\n", p.Id, err)
+		return
+	}
+
+	responseJson, err := json.Marshal(p)
+	if err != nil {
+		fmt.Fprintf(w, "Marshaling JSON: %s.\n", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "%s\n", responseJson)
+
 }
 
 func (a *App) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	log.Println("Delete a product.")
+
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+
+	if err != nil {
+		fmt.Fprint(w, "Invalid Product Id.\n")
+		return
+	}
+
+	p := models.Product{Id: id}
+
+	err = p.DeleteProduct(a.DB)
+	if err != nil {
+		fmt.Fprintf(w, "Error while deleting product %d.\n", p.Id)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "Successfully delete product %d.\n", p.Id)
 }
